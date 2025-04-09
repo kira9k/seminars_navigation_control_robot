@@ -134,21 +134,28 @@ rviz2 -d ~/ros2_seminars_ws/install/urdf_tutorial/share/urdf_tutorial/r2d2.rviz
 Код представлен ниже 
 
 ```python
-denom = 1 + cos(angle)**2
-x = a * sin(angle) / denom
-y = a * sin(angle) * cos(angle) / de
-
+# Текущий угол
+denom = 1 + sin(angle)**2
+x = a * cos(angle) / denom
+y = a * sin(angle) * cos(angle) / denom
+          
+# Следующий угол
 next_angle = angle + degree / 4
-next_denom = 1 + cos(next_angle)**2
-next_x = a * sin(next_angle) / next_denom
+next_denom = 1 + sin(next_angle)**2
+next_x = a * cos(next_angle) / next_denom
 next_y = a * sin(next_angle) * cos(next_angle) / next_denom
-yaw = atan2(next_y - y, next_x - x)  
+          
+# Вычисление ориентации
+yaw = atan2(next_y - y, next_x - x)
+          
+# Формирование сообщения одометрии
 odom_trans.header.stamp = now.to_msg()
 odom_trans.transform.translation.x = x
 odom_trans.transform.translation.y = y
 odom_trans.transform.translation.z = 0.7
 odom_trans.transform.rotation = euler_to_quaternion(0, 0, yaw)
 ```
+
 
 Измененная часть urdf показана ниже
 ```xml
@@ -288,20 +295,22 @@ odom_trans.transform.rotation = euler_to_quaternion(0, 0, yaw)
 # Семинар 2
 ## Теория
 ### Xacro
-`xacro` расширяет возможности xml и упрощает составление URDF моделей, увеличивает читаемость и редактируемость моделей.
-
+`xacro` расширяет возможности xml и упрощает составление URDF моделей, увеличивает читаемость и редактируемость моделей за счет добавления параметров, математических выражений и маросов.
 #### Параметры
+Параметры (`<xacro:property>`) позволяет задавать переменные, которые можно использовать в коде. Пример представлен ниже. В коде задается переменная `the_radius` и присваивается ей значение 2.1.
 ```xml
 <xacro:property name="the_radius" value="2.1" />
 <xacro:property name="the_length" value="4.5" />
 <geometry type="cylinder" radius="${the_radius}" length="${the_length}" />
 ```
 #### Математические выражения
+Математические выражения позволяют производить вычисления внутри атрибутов, с использованием `${}`. В коде пример, как происходит умножение переменной `radius` на 2.
 ```xml
 <xacro:property name="radius" value="4.3" />
 <circle diameter="${2 * radius}" />
 ```
 #### Макросы
+Макросы позволяеют создавать переиспользуемые шаблоны с параметрами. В коде ниже создается макрос `circle_x2` с переменной `radius`, которая в теле макроса умножается на 2.
 ```xml
 <xacro:macro name="circle_x2" params="radius">
 	<circle diameter="${2 * radius}" />
@@ -310,6 +319,7 @@ odom_trans.transform.rotation = euler_to_quaternion(0, 0, yaw)
 <xacro:circle_x2 radius="12" />
 ```
 ### Gazebo в URDF:
+Gazebo - это симулятор, который интегрируется с ROS
 Формат URDF при использовыании в Gazebo, поддерживает дополнительные возможности, описываемые внутри элементов `<gazebo>`. Основыными такими возможностями является поддержка различных сенсоров (камер, лидаров, дальномеров и т.д.), контроллеров для реализации той или иной модели управления и возможности по описанию свойств тел (материала, коэфф. трения и т.д.).
 
 ![Оригинальный turtlebot](images/turtlebot_orig.jpg)
@@ -396,11 +406,21 @@ ros2 launch youbot_description rviz.launch.py
 ```
 python3 src/youbot_description/scripts/state_publisher.py 
 ```
+Данный скрипт публикует состояния суставов робота 'JointState' в топик '/joint_states', управляет движением манипулятора по заранее заданной траектории, описанной в списке 'path'.
+
+Траектория 'path' задает последовательность положений суставов манипулятора (в градусах) и время перехода между ними.
+
+Класс `StatePublisher` наследуется от Node и реализует логику управления. В нем определяются суставы робота
+
+Метод `smother` предназначен для линейной интерполяцией между 
+'x0' и 'x1'.
+
+В основном цикле происходят итерации по элементам 'path' для управления. 
 
 ![yobot_dancing](images/youbot_dancing.gif)
 
 ## Задание 2. Программируем траекторию
-Ниже представлен код для `path`
+Ниже представлен новый код для `path`
 ```python
 path = [
     { 
